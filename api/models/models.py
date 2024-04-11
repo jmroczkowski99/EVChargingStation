@@ -26,7 +26,7 @@ class ChargingStation(Base):
     __tablename__ = "charging_stations"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String, nullable=False)
+    name = Column(String, unique=True, nullable=False)
     device_id = Column(UUID(as_uuid=True), unique=True, nullable=False, default=uuid.uuid4)
     ip_address = Column(INET, unique=True, nullable=False)
     firmware_version = Column(String, nullable=False)
@@ -39,7 +39,7 @@ class Connector(Base):
     __tablename__ = "connectors"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String, nullable=False)
+    name = Column(String, unique=True, nullable=False)
     priority = Column(Boolean, default=False, nullable=False)
-    charging_station_id = Column(UUID(as_uuid=True), ForeignKey("charging_stations.id"), nullable=False)
+    charging_station_id = Column(UUID(as_uuid=True), ForeignKey("charging_stations.id"))
     charging_station = relationship("ChargingStation", back_populates="connectors")
