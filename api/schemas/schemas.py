@@ -1,5 +1,5 @@
 from pydantic import BaseModel, UUID4, Field, conint, confloat, validator
-from typing import List
+from typing import List, Optional
 from uuid import uuid4
 from ipaddress import IPv4Address, IPv6Address
 from ..models.models import CurrentTypeEnum
@@ -27,15 +27,19 @@ class ChargingStationType(ChargingStationTypeBase):
 class ConnectorBase(BaseModel):
     name: str
     priority: bool
-    charging_station_id: UUID4
 
 
 class ConnectorCreate(ConnectorBase):
+    charging_station_id: Optional[UUID4] = None
+
+
+class ConnectorCreateWithStation(ConnectorBase):
     pass
 
 
 class Connector(ConnectorBase):
     id: UUID4
+    charging_station_id: Optional[UUID4] = None
 
     class Config:
         orm_mode = True
@@ -43,7 +47,7 @@ class Connector(ConnectorBase):
 
 class ChargingStationBase(BaseModel):
     name: str
-    device_id: UUID4 = Field(default_factory=uuid4)
+    device_id: Optional[UUID4] = Field(default_factory=uuid4)
     ip_address: str
     firmware_version: str
     type_id: UUID4
@@ -61,7 +65,7 @@ class ChargingStationBase(BaseModel):
 
 
 class ChargingStationCreate(ChargingStationBase):
-    connectors: List[ConnectorCreate]
+    connectors: List[ConnectorCreateWithStation]
 
 
 class ChargingStation(ChargingStationBase):
