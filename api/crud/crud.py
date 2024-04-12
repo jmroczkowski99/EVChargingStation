@@ -55,8 +55,15 @@ def delete_charging_station_type(db: Session, charging_station_type_id: UUID4):
 
 
 def create_charging_station(db: Session, charging_station_data: schemas.ChargingStationCreate):
-    db_charging_station = models.ChargingStation(**charging_station_data.dict())
+    db_charging_station = models.ChargingStation(**charging_station_data.dict(exclude={'connectors'}))
     db.add(db_charging_station)
+    db.flush()
+
+    connectors_data = charging_station_data.connectors
+    for connector_data in connectors_data:
+        connector = models.Connector(**connector_data.dict())
+        db_charging_station.connectors.append(connector)
+
     db.commit()
     db.refresh(db_charging_station)
     return db_charging_station
@@ -85,8 +92,21 @@ def update_charging_station(
         .first()
     if not db_charging_station:
         raise HTTPException(status_code=404, detail="ChargingStation instance not found")
-    for key, value in charging_station_data.dict().items():
+
+    update_data = charging_station_data.dict(exclude={'connectors'})
+    for key, value in update_data.items():
         setattr(db_charging_station, key, value)
+
+    existing_connectors = db_charging_station.connectors
+    for connector in existing_connectors:
+        db.delete(connector)
+        db.flush()
+
+    connectors_data = charging_station_data.connectors
+    for connector_data in connectors_data:
+        connector = models.Connector(**connector_data.dict())
+        db_charging_station.connectors.append(connector)
+
     db.commit()
     db.refresh(db_charging_station)
     return db_charging_station

@@ -5,6 +5,10 @@ from ipaddress import IPv4Address, IPv6Address
 from ..models.models import CurrentTypeEnum
 
 
+class ChargingStationIDOnly(BaseModel):
+    id: UUID4
+
+
 class ChargingStationTypeBase(BaseModel):
     name: str
     plug_count: conint(gt=0)
@@ -16,9 +20,13 @@ class ChargingStationTypeCreate(ChargingStationTypeBase):
     pass
 
 
+class ChargingStationTypeNoList(ChargingStationTypeBase):
+    id: UUID4
+
+
 class ChargingStationType(ChargingStationTypeBase):
     id: UUID4
-    charging_stations: List[UUID4] = []
+    charging_stations: List[ChargingStationIDOnly] = []
 
     class Config:
         orm_mode = True
@@ -50,7 +58,6 @@ class ChargingStationBase(BaseModel):
     device_id: Optional[UUID4] = Field(default_factory=uuid4)
     ip_address: str
     firmware_version: str
-    type_id: UUID4
 
     @validator("ip_address")
     def validate_ip_address(cls, v):
@@ -65,12 +72,13 @@ class ChargingStationBase(BaseModel):
 
 
 class ChargingStationCreate(ChargingStationBase):
+    type_id: UUID4
     connectors: List[ConnectorCreateWithStation]
 
 
 class ChargingStation(ChargingStationBase):
     id: UUID4
-    type: ChargingStationType
+    type: ChargingStationTypeNoList
     connectors: List[Connector] = []
 
     class Config:
