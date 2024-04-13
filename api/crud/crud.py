@@ -4,6 +4,7 @@ from pydantic import UUID4
 from fastapi import HTTPException
 from ..models import models
 from ..schemas import schemas
+from ..utils.helpers import check_priority_constraint_connector, check_priority_constraint_station
 
 
 def create_charging_station_type(db: Session, charging_station_type_data: schemas.ChargingStationTypeCreate):
@@ -86,6 +87,8 @@ def create_charging_station(db: Session, charging_station_data: schemas.Charging
         db.flush()
 
         connectors_data = charging_station_data.connectors
+        check_priority_constraint_station(db, connectors_data)
+
         for connector_data in connectors_data:
             connector = models.Connector(**connector_data.dict())
             db_charging_station.connectors.append(connector)
@@ -137,6 +140,7 @@ def update_charging_station(
             db.flush()
 
         connectors_data = charging_station_data.connectors
+        check_priority_constraint_station(db, connectors_data)
         for connector_data in connectors_data:
             connector = models.Connector(**connector_data.dict())
             db_charging_station.connectors.append(connector)
@@ -165,6 +169,9 @@ def delete_charging_station(db: Session, charging_station_id: UUID4):
 
 
 def create_connector(db: Session, connector_data: schemas.ConnectorCreate):
+    if "charging_station_id" in connector_data.dict() and connector_data.priority is True:
+        check_priority_constraint_connector(db, connector_data.charging_station_id)
+
     try:
         db_connector = models.Connector(**connector_data.dict())
         db.add(db_connector)
@@ -198,6 +205,9 @@ def update_connector(
         connector_id: UUID4,
         connector_data: schemas.ConnectorCreate,
 ):
+    if "charging_station_id" in connector_data.dict() and connector_data.priority is True:
+        check_priority_constraint_connector(db, connector_data.charging_station_id)
+
     try:
         db_connector = db.query(models.Connector)\
             .filter(models.Connector.id == connector_id)\
