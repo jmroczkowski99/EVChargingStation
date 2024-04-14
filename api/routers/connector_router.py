@@ -41,8 +41,20 @@ def read_connector(connector_id: UUID4, db: Session = Depends(get_db)):
     tags=["Connectors"],
     summary="Read a list of all connectors. Provide limit or skip values for pagination"
 )
-def read_connector_list(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_connector_list(db=db, skip=skip, limit=limit)
+def read_connector_list(
+        priority: bool | None = None,
+        charging_station_id: UUID4 | None = None,
+        skip: int = 0,
+        limit: int = 100,
+        db: Session = Depends(get_db)
+):
+    return crud.get_connector_list(
+        priority=priority,
+        charging_station_id=charging_station_id,
+        skip=skip,
+        limit=limit,
+        db=db,
+    )
 
 
 @router.put(

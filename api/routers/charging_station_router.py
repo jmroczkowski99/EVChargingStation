@@ -5,6 +5,8 @@ from pydantic import UUID4
 from ..crud import crud
 from ..schemas import schemas
 from ..database.database import get_db
+from ..models.models import CurrentTypeEnum
+
 
 router = APIRouter()
 
@@ -41,8 +43,26 @@ def read_charging_station(charging_station_id: UUID4, db: Session = Depends(get_
     tags=["Charging Stations"],
     summary="Read a list of all charging stations. Provide limit or skip values for pagination"
 )
-def read_charging_station_list(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    return crud.get_charging_station_list(db=db, skip=skip, limit=limit)
+def read_charging_station_list(
+        plug_count: int | None = None,
+        min_efficiency: float | None = None,
+        max_efficiency: float | None = None,
+        current_type: CurrentTypeEnum | None = None,
+        firmware_version: str | None = None,
+        skip: int = 0,
+        limit: int = 100,
+        db: Session = Depends(get_db)
+):
+    return crud.get_charging_station_list(
+        plug_count=plug_count,
+        min_efficiency=min_efficiency,
+        max_efficiency=max_efficiency,
+        current_type=current_type,
+        firmware_version=firmware_version,
+        db=db,
+        skip=skip,
+        limit=limit
+    )
 
 
 @router.put(

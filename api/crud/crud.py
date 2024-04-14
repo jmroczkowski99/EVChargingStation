@@ -35,8 +35,27 @@ def get_charging_station_type(db: Session, charging_station_type_id: UUID4):
     return db_charging_station_type
 
 
-def get_charging_station_type_list(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.ChargingStationType).offset(skip).limit(limit).all()
+def get_charging_station_type_list(
+        db: Session,
+        plug_count: int,
+        min_efficiency: float,
+        max_efficiency: float,
+        current_type: models.CurrentTypeEnum,
+        skip: int,
+        limit: int,
+):
+    query = db.query(models.ChargingStationType)
+
+    if plug_count is not None:
+        query = query.filter(models.ChargingStationType.plug_count == plug_count)
+    if min_efficiency is not None:
+        query = query.filter(models.ChargingStationType.efficiency >= min_efficiency)
+    if max_efficiency is not None:
+        query = query.filter(models.ChargingStationType.efficiency <= max_efficiency)
+    if current_type is not None:
+        query = query.filter(models.ChargingStationType.current_type == current_type)
+
+    return query.offset(skip).limit(limit).all()
 
 
 def update_charging_station_type(
@@ -125,11 +144,32 @@ def get_charging_station(db: Session, charging_station_id: UUID4):
     return db_charging_station
 
 
-def get_charging_station_list(db: Session, skip: int = 0, limit: int = 100):
+def get_charging_station_list(
+        db: Session,
+        plug_count: int,
+        min_efficiency: float,
+        max_efficiency: float,
+        current_type: models.CurrentTypeEnum,
+        firmware_version: str,
+        skip: int,
+        limit: int,
+):
     charging_stations = db.query(models.ChargingStation)\
+        .join(models.ChargingStationType)\
         .options(joinedload(models.ChargingStation.type),
-                 joinedload(models.ChargingStation.connectors))\
-        .offset(skip).limit(limit).all()
+                 joinedload(models.ChargingStation.connectors))
+
+    if plug_count is not None:
+        charging_stations = charging_stations.filter(models.ChargingStationType.plug_count == plug_count)
+    if min_efficiency is not None:
+        charging_stations = charging_stations.filter(models.ChargingStationType.efficiency >= min_efficiency)
+    if max_efficiency is not None:
+        charging_stations = charging_stations.filter(models.ChargingStationType.efficiency <= max_efficiency)
+    if current_type is not None:
+        charging_stations = charging_stations.filter(models.ChargingStationType.current_type == current_type)
+    if firmware_version is not None:
+        charging_stations = charging_stations.filter(models.ChargingStation.firmware_version == firmware_version)
+
     for station in charging_stations:
         if len(station.connectors) != station.type.plug_count:
             raise HTTPException(
@@ -137,7 +177,7 @@ def get_charging_station_list(db: Session, skip: int = 0, limit: int = 100):
                 detail=f"Charging station with id={station.id} has {len(station.connectors)} "
                        f"connectors instead of {station.type.plug_count}."
             )
-    return charging_stations
+    return charging_stations.offset(skip).limit(limit).all()
 
 
 def update_charging_station(
@@ -222,8 +262,21 @@ def get_connector(db: Session, connector_id: UUID4):
     return db_connector
 
 
-def get_connector_list(db: Session, skip: int = 0, limit: int = 100):
-    return db.query(models.Connector).offset(skip).limit(limit).all()
+def get_connector_list(
+        db: Session,
+        priority: bool,
+        charging_station_id: UUID4,
+        skip: int,
+        limit: int,
+):
+    query = db.query(models.Connector)
+
+    if priority is not None:
+        query = query.filter(models.Connector.priority == priority)
+    if charging_station_id is not None:
+        query = query.filter(models.Connector.charging_station_id == charging_station_id)
+
+    return query.offset(skip).limit(limit).all()
 
 
 def update_connector(
