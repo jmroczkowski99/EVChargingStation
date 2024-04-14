@@ -3,7 +3,7 @@ from sqlalchemy.dialects.postgresql import UUID, INET
 from sqlalchemy.orm import relationship
 import uuid
 import enum
-from ..database.database import Base
+from ..database.base import Base
 
 
 class CurrentTypeEnum(enum.Enum):
