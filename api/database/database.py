@@ -1,6 +1,7 @@
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, Session
+from .base import Base
+from .seed import seed_charging_station_types
 import os
 from dotenv import load_dotenv
 
@@ -12,7 +13,12 @@ engine = create_engine(SQLALCHEMY_DATABASE_URL)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base = declarative_base()
+
+def init_db():
+    Base.metadata.create_all(bind=engine)
+
+    with Session(engine) as session:
+        seed_charging_station_types(session)
 
 
 def get_db():
