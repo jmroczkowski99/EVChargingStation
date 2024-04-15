@@ -2,9 +2,12 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import List
 from pydantic import UUID4
+import logging
 from ..crud import crud
 from ..schemas import schemas
 from ..database.database import get_db
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -20,7 +23,10 @@ def create_connector(
         connector_data: schemas.ConnectorCreate,
         db: Session = Depends(get_db)
 ):
-    return crud.create_connector(db=db, connector_data=connector_data)
+    logger.info(f"Attempting to create a connector with data: {connector_data}.")
+    result = crud.create_connector(db=db, connector_data=connector_data)
+    logger.info(f"Successfully created a connector with ID: {result.id}.")
+    return result
 
 
 @router.get(
@@ -31,7 +37,10 @@ def create_connector(
     summary="Read a specific connector providing its UUID"
 )
 def read_connector(connector_id: UUID4, db: Session = Depends(get_db)):
-    return crud.get_connector(db=db, connector_id=connector_id)
+    logger.info(f"Fetching a connector with ID: {connector_id}.")
+    result = crud.get_connector(db=db, connector_id=connector_id)
+    logger.info(f"Successfully retrieved a connector with ID: {connector_id}.")
+    return result
 
 
 @router.get(
@@ -48,13 +57,19 @@ def read_connector_list(
         limit: int = 100,
         db: Session = Depends(get_db)
 ):
-    return crud.get_connector_list(
+    logger.info(
+        f"Fetching a list of connectors with filters: priority={priority}, charging_station_id={charging_station_id}, "
+        f"skip={skip}, limit={limit}."
+    )
+    result = crud.get_connector_list(
         priority=priority,
         charging_station_id=charging_station_id,
         skip=skip,
         limit=limit,
         db=db,
     )
+    logger.info(f"Successfully retrieved {len(result)} connectors.")
+    return result
 
 
 @router.put(
@@ -69,11 +84,14 @@ def update_connector(
         connector_data: schemas.ConnectorCreate,
         db: Session = Depends(get_db)
 ):
-    return crud.update_connector(
+    logger.info(f"Attempting to update a connector with ID: {connector_id} with data: {connector_data}.")
+    result = crud.update_connector(
         db=db,
         connector_id=connector_id,
         connector_data=connector_data
     )
+    logger.info(f"Succesfully updated a connector with ID: {connector_id}.")
+    return result
 
 
 @router.delete(
@@ -83,4 +101,7 @@ def update_connector(
     summary="Delete a specific connector providing its UUID"
 )
 def delete_connector(connector_id: UUID4, db: Session = Depends(get_db)):
-    return crud.delete_connector(db=db, connector_id=connector_id)
+    logger.info(f"Attempting to delete a connector with ID: {connector_id}.")
+    result = crud.delete_connector(db=db, connector_id=connector_id)
+    logger.info(f"Successfully deleted a connector with ID: {connector_id}.")
+    return result

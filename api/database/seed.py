@@ -1,4 +1,7 @@
 from ..models.models import ChargingStationType
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 default_charging_station_types = [
@@ -16,6 +19,6 @@ def seed_charging_station_types(db_session):
         types = [ChargingStationType(**data) for data in default_charging_station_types]
         db_session.add_all(types)
         db_session.commit()
-        print("Database has been seeded with initial charging station types.")
+        logger.info("Database has been seeded with initial charging station types.")
     else:
-        print("Charging station types already exist. No changes made.")
+        logger.info("Charging station types already exist. No changes made.")

@@ -2,12 +2,15 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError
 from pydantic import UUID4
 from fastapi import HTTPException
+import logging
 from ..models import models
 from ..schemas import schemas
 from ..utils.helpers import (check_priority_constraint_connector,
                              check_priority_constraint_station,
                              check_connector_count_connector,
                              check_connector_count_station)
+
+logger = logging.getLogger(__name__)
 
 
 def create_charging_station_type(db: Session, charging_station_type_data: schemas.ChargingStationTypeCreate):
@@ -18,11 +21,19 @@ def create_charging_station_type(db: Session, charging_station_type_data: schema
         db.refresh(db_charging_station_type)
         return db_charging_station_type
     except IntegrityError:
+        logger.error("An integrity error occurred while creating a charging station type.", exc_info=True)
         db.rollback()
         raise HTTPException(
             status_code=400,
             detail="Provided data violates the database's integrity. "
                    "Make sure that unique and not-null constraints aren't ignored."
+        )
+    except Exception:
+        logger.error("An error occurred while creating a charging station type.", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred."
         )
 
 
@@ -31,6 +42,7 @@ def get_charging_station_type(db: Session, charging_station_type_id: UUID4):
         .filter(models.ChargingStationType.id == charging_station_type_id)\
         .first()
     if not db_charging_station_type:
+        logger.error(f"Charging station type with ID: {charging_station_type_id} not found.")
         raise HTTPException(status_code=404, detail="ChargingStationType instance not found.")
     return db_charging_station_type
 
@@ -68,6 +80,7 @@ def update_charging_station_type(
             .filter(models.ChargingStationType.id == charging_station_type_id)\
             .first()
         if not db_charging_station_type:
+            logger.error(f"Charging station type with ID: {charging_station_type_id} not found.")
             raise HTTPException(status_code=404, detail="ChargingStationType instance not found.")
         for key, value in charging_station_type_data.dict().items():
             setattr(db_charging_station_type, key, value)
@@ -75,11 +88,19 @@ def update_charging_station_type(
         db.refresh(db_charging_station_type)
         return db_charging_station_type
     except IntegrityError:
+        logger.error("An integrity error occurred while updating a charging station type.", exc_info=True)
         db.rollback()
         raise HTTPException(
             status_code=400,
             detail="Provided data violates the database's integrity. "
                    "Make sure that unique and not-null constraints aren't ignored."
+        )
+    except Exception:
+        logger.error("An error occurred while updating a charging station type.", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred."
         )
 
 
@@ -92,19 +113,32 @@ def delete_charging_station_type(db: Session, charging_station_type_id: UUID4):
             db.delete(db_charging_station_type)
             db.commit()
         else:
+            logger.error(f"Charging station type with ID: {charging_station_type_id} not found.")
             raise HTTPException(status_code=404, detail="ChargingStationType instance not found.")
     except IntegrityError:
+        logger.error("An integrity error occurred while deleting a charging station type.", exc_info=True)
         db.rollback()
         raise HTTPException(
             status_code=400,
             detail="Deleting this Charging Station Type violates the database's integrity. "
                    "Make sure that no Charging Stations are assigned to this Type."
         )
+    except Exception:
+        logger.error("An error occurred while deleting a charging station type.", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred."
+        )
 
 
 def create_charging_station(db: Session, charging_station_data: schemas.ChargingStationCreate):
-    check_priority_constraint_station(db, charging_station_data.connectors)
+    logger.info("Checking connector priority constraint...")
+    check_priority_constraint_station(charging_station_data.connectors)
+    logger.info("Connector priority constraint not violated.")
+    logger.info("Checking connector count constraint...")
     check_connector_count_station(db, charging_station_data)
+    logger.info("Connector count constraint not violated.")
 
     try:
         db_charging_station = models.ChargingStation(**charging_station_data.dict(exclude={'connectors'}))
@@ -112,7 +146,6 @@ def create_charging_station(db: Session, charging_station_data: schemas.Charging
         db.flush()
 
         connectors_data = charging_station_data.connectors
-
         for connector_data in connectors_data:
             connector = models.Connector(**connector_data.dict())
             db_charging_station.connectors.append(connector)
@@ -121,11 +154,19 @@ def create_charging_station(db: Session, charging_station_data: schemas.Charging
         db.refresh(db_charging_station)
         return db_charging_station
     except IntegrityError:
+        logger.error("An integrity error occurred while creating a charging station.", exc_info=True)
         db.rollback()
         raise HTTPException(
             status_code=400,
             detail="Provided data violates the database's integrity. "
                    "Make sure that unique and not-null constraints aren't ignored."
+        )
+    except Exception:
+        logger.error("An error occurred while creating a charging station.", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred."
         )
 
 
@@ -134,13 +175,21 @@ def get_charging_station(db: Session, charging_station_id: UUID4):
         .filter(models.ChargingStation.id == charging_station_id)\
         .first()
     if not db_charging_station:
+        logger.error(f"Charging station with ID: {charging_station_id} not found.")
         raise HTTPException(status_code=404, detail="ChargingStation instance not found.")
+
+    logger.info("Checking connector count constraint...")
     if db_charging_station.type.plug_count != len(db_charging_station.connectors):
+        logger.error(
+            f"Unable to retrieve specified charging station. It has {len(db_charging_station.connectors)} "
+            f"connectors instead of {db_charging_station.type.plug_count}."
+        )
         raise HTTPException(
             status_code=400,
             detail=f"This Charging Station has {len(db_charging_station.connectors)} "
                    f"connectors instead of {db_charging_station.type.plug_count}."
         )
+    logger.info("Connector count constraint not violated.")
     return db_charging_station
 
 
@@ -170,13 +219,16 @@ def get_charging_station_list(
     if firmware_version is not None:
         charging_stations = charging_stations.filter(models.ChargingStation.firmware_version == firmware_version)
 
+    logger.info("Checking connector count constraint...")
     for station in charging_stations:
         if len(station.connectors) != station.type.plug_count:
+            logger.error("Connector count constraint violation.")
             raise HTTPException(
                 status_code=400,
                 detail=f"Charging station with id={station.id} has {len(station.connectors)} "
                        f"connectors instead of {station.type.plug_count}."
             )
+    logger.info("Connector count constraint not violated.")
     return charging_stations.offset(skip).limit(limit).all()
 
 
@@ -185,14 +237,19 @@ def update_charging_station(
         charging_station_id: UUID4,
         charging_station_data: schemas.ChargingStationCreate,
 ):
-    check_priority_constraint_station(db, charging_station_data.connectors)
+    logger.info("Checking connector priority constraint...")
+    check_priority_constraint_station(charging_station_data.connectors)
+    logger.info("Connector priority constraint not violated.")
+    logger.info("Checking connector count constraint...")
     check_connector_count_station(db, charging_station_data)
+    logger.info("Connector count constraint not violated.")
 
     try:
         db_charging_station = db.query(models.ChargingStation)\
             .filter(models.ChargingStation.id == charging_station_id)\
             .first()
         if not db_charging_station:
+            logger.error(f"Charging station with ID: {charging_station_id} not found.")
             raise HTTPException(status_code=404, detail="ChargingStation instance not found.")
 
         update_data = charging_station_data.dict(exclude={'connectors'})
@@ -213,30 +270,51 @@ def update_charging_station(
         db.refresh(db_charging_station)
         return db_charging_station
     except IntegrityError:
+        logger.error("An integrity error occurred while updating a charging station.", exc_info=True)
         db.rollback()
         raise HTTPException(
             status_code=400,
             detail="Provided data violates the database's integrity. "
                    "Make sure that unique and not-null constraints aren't ignored."
         )
+    except Exception:
+        logger.error("An error occurred while updating a charging station.", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred."
+        )
 
 
 def delete_charging_station(db: Session, charging_station_id: UUID4):
-    db_charging_station = db.query(models.ChargingStation)\
-        .filter(models.ChargingStation.id == charging_station_id)\
-        .first()
-    if db_charging_station:
-        db.delete(db_charging_station)
-        db.commit()
-    else:
-        raise HTTPException(status_code=404, detail="ChargingStation instance not found.")
+    try:
+        db_charging_station = db.query(models.ChargingStation)\
+            .filter(models.ChargingStation.id == charging_station_id)\
+            .first()
+        if db_charging_station:
+            db.delete(db_charging_station)
+            db.commit()
+        else:
+            logger.error(f"Charging station with ID: {charging_station_id} not found.")
+            raise HTTPException(status_code=404, detail="ChargingStation instance not found.")
+    except Exception:
+        logger.error("An error occurred while deleting a charging station.", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred."
+        )
 
 
 def create_connector(db: Session, connector_data: schemas.ConnectorCreate):
     if connector_data.dict().get('charging_station_id') is not None:
         if connector_data.priority is True:
+            logger.info("Checking connector priority constraint...")
             check_priority_constraint_connector(db, connector_data.charging_station_id)
+            logger.info("Connector priority constraint not violated.")
+        logger.info("Checking connector count constraint...")
         check_connector_count_connector(db, connector_data.charging_station_id)
+        logger.info("Connector count constraint not violated.")
 
     try:
         db_connector = models.Connector(**connector_data.dict())
@@ -245,11 +323,19 @@ def create_connector(db: Session, connector_data: schemas.ConnectorCreate):
         db.refresh(db_connector)
         return db_connector
     except IntegrityError:
+        logger.error("An integrity error occurred while creating a connector.", exc_info=True)
         db.rollback()
         raise HTTPException(
             status_code=400,
             detail="Provided data violates the database's integrity. "
                    "Make sure that unique and not-null constraints aren't ignored."
+        )
+    except Exception:
+        logger.error("An error occurred while creating a connector.", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred."
         )
 
 
@@ -258,6 +344,7 @@ def get_connector(db: Session, connector_id: UUID4):
         .filter(models.Connector.id == connector_id)\
         .first()
     if not db_connector:
+        logger.error(f"Connector with ID: {connector_id} not found.")
         raise HTTPException(status_code=404, detail="Connector instance not found.")
     return db_connector
 
@@ -286,14 +373,19 @@ def update_connector(
 ):
     if connector_data.dict().get('charging_station_id') is not None:
         if connector_data.priority is True:
+            logger.info("Checking connector priority constraint...")
             check_priority_constraint_connector(db, connector_data.charging_station_id)
+            logger.info("Connector priority constraint not violated.")
+        logger.info("Checking connector count constraint...")
         check_connector_count_connector(db, connector_data.charging_station_id)
+        logger.info("Connector count constraint not violated.")
 
     try:
         db_connector = db.query(models.Connector)\
             .filter(models.Connector.id == connector_id)\
             .first()
         if not db_connector:
+            logger.error(f"Connector with ID: {connector_id} not found.")
             raise HTTPException(status_code=404, detail="Connector instance not found.")
         for key, value in connector_data.dict().items():
             setattr(db_connector, key, value)
@@ -301,20 +393,37 @@ def update_connector(
         db.refresh(db_connector)
         return db_connector
     except IntegrityError:
+        logger.error("An integrity error occurred while updating a connector.", exc_info=True)
         db.rollback()
         raise HTTPException(
             status_code=400,
             detail="Provided data violates database's integrity. "
                    "Make sure that unique and not-null constraints aren't ignored."
         )
+    except Exception:
+        logger.error("An error occurred while updating a connector.", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred."
+        )
 
 
 def delete_connector(db: Session, connector_id: UUID4):
-    db_connector = db.query(models.Connector)\
-        .filter(models.Connector.id == connector_id)\
-        .first()
-    if db_connector:
-        db.delete(db_connector)
-        db.commit()
-    else:
-        raise HTTPException(status_code=404, detail="Connector instance not found.")
+    try:
+        db_connector = db.query(models.Connector)\
+            .filter(models.Connector.id == connector_id)\
+            .first()
+        if db_connector:
+            db.delete(db_connector)
+            db.commit()
+        else:
+            logger.error(f"Connector with ID: {connector_id} not found.")
+            raise HTTPException(status_code=404, detail="Connector instance not found.")
+    except Exception:
+        logger.error("An error occurred while deleting a connector.", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred."
+        )
