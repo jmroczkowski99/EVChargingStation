@@ -43,3 +43,11 @@ class Connector(Base):
     priority = Column(Boolean, default=False, nullable=False)
     charging_station_id = Column(UUID(as_uuid=True), ForeignKey("charging_stations.id"))
     charging_station = relationship("ChargingStation", back_populates="connectors")
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    username = Column(String, unique=True)
+    hashed_password = Column(String)
