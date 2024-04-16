@@ -9,6 +9,7 @@ from ..utils.helpers import (check_priority_constraint_connector,
                              check_priority_constraint_station,
                              check_connector_count_connector,
                              check_connector_count_station)
+from ..utils.auth import get_password_hash
 
 logger = logging.getLogger(__name__)
 
@@ -422,6 +423,67 @@ def delete_connector(db: Session, connector_id: UUID4):
             raise HTTPException(status_code=404, detail="Connector instance not found.")
     except Exception:
         logger.error("An error occurred while deleting a connector.", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred."
+        )
+
+
+def create_user(db: Session, user_data: schemas.UserCreate):
+    db_user = db.query(models.User).filter(models.User.username == user_data.username).first()
+    if db_user:
+        logger.error(f"Username '{user_data.username}' is already used.")
+        raise HTTPException(status_code=400, detail=f"Username '{user_data.username}' is already registered.")
+
+    hashed_password = get_password_hash(user_data.password)
+    new_user = models.User(username=user_data.username, hashed_password=hashed_password)
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
+
+
+def update_user(db: Session, username: str, user_data: schemas.UserCreate):
+    try:
+        db_user = db.query(models.User).filter(models.User.username == username).first()
+        if not db_user:
+            logger.error(f"User '{username}' not found.")
+            raise HTTPException(status_code=404, detail=f"User '{username}' not found.")
+
+        db_user.username = user_data.username
+        db_user.hashed_password = get_password_hash(user_data.password)
+        db.commit()
+        db.refresh(db_user)
+        return db_user
+    except IntegrityError:
+        logger.error("An integrity error occurred while updating user credentials.", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=400,
+            detail="Provided data violates the database's integrity. "
+                   "Try using another username."
+        )
+    except Exception:
+        logger.error("An error occurred while updating user credentials.", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred."
+        )
+
+
+def delete_user(db: Session, username: str):
+    try:
+        db_user = db.query(models.User).filter(models.User.username == username).first()
+        if db_user:
+            db.delete(db_user)
+            db.commit()
+        else:
+            logger.error(f"User '{username}' not found.")
+            raise HTTPException(status_code=404, detail=f"User {username} not found.")
+    except Exception:
+        logger.error("An error occurred while deleting a user.", exc_info=True)
         db.rollback()
         raise HTTPException(
             status_code=500,
