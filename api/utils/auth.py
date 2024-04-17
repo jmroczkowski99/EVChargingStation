@@ -58,7 +58,7 @@ def create_access_token(data: dict):
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     token_cache[encoded_jwt] = expire
-    logger.info(f"Created a new token for user '{data.get('sub')}' with expiration at {expire}.")
+    logger.info(f"Created a new token for user '{data.get('sub')}'.")
     return encoded_jwt
 
 
