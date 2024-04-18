@@ -76,15 +76,15 @@ def update_charging_station_type(
         charging_station_type_id: UUID4,
         charging_station_type_data: schemas.ChargingStationTypeCreate,
 ):
+    db_charging_station_type = db.query(models.ChargingStationType)\
+        .filter(models.ChargingStationType.id == charging_station_type_id)\
+        .first()
+    if not db_charging_station_type:
+        logger.error(f"Charging station type with ID: {charging_station_type_id} not found.")
+        raise HTTPException(status_code=404, detail="ChargingStationType instance not found.")
+    for key, value in charging_station_type_data.dict().items():
+        setattr(db_charging_station_type, key, value)
     try:
-        db_charging_station_type = db.query(models.ChargingStationType)\
-            .filter(models.ChargingStationType.id == charging_station_type_id)\
-            .first()
-        if not db_charging_station_type:
-            logger.error(f"Charging station type with ID: {charging_station_type_id} not found.")
-            raise HTTPException(status_code=404, detail="ChargingStationType instance not found.")
-        for key, value in charging_station_type_data.dict().items():
-            setattr(db_charging_station_type, key, value)
         db.commit()
         db.refresh(db_charging_station_type)
         return db_charging_station_type
@@ -106,16 +106,15 @@ def update_charging_station_type(
 
 
 def delete_charging_station_type(db: Session, charging_station_type_id: UUID4):
+    db_charging_station_type = db.query(models.ChargingStationType)\
+        .filter(models.ChargingStationType.id == charging_station_type_id)\
+        .first()
+    if not db_charging_station_type:
+        logger.error(f"Charging station type with ID: {charging_station_type_id} not found.")
+        raise HTTPException(status_code=404, detail="ChargingStationType instance not found.")
     try:
-        db_charging_station_type = db.query(models.ChargingStationType)\
-            .filter(models.ChargingStationType.id == charging_station_type_id)\
-            .first()
-        if db_charging_station_type:
-            db.delete(db_charging_station_type)
-            db.commit()
-        else:
-            logger.error(f"Charging station type with ID: {charging_station_type_id} not found.")
-            raise HTTPException(status_code=404, detail="ChargingStationType instance not found.")
+        db.delete(db_charging_station_type)
+        db.commit()
     except IntegrityError:
         logger.error("An integrity error occurred while deleting a charging station type.", exc_info=True)
         db.rollback()
@@ -245,18 +244,17 @@ def update_charging_station(
     check_connector_count_station(db, charging_station_data)
     logger.info("Connector count constraint not violated.")
 
+    db_charging_station = db.query(models.ChargingStation)\
+        .filter(models.ChargingStation.id == charging_station_id)\
+        .first()
+    if not db_charging_station:
+        logger.error(f"Charging station with ID: {charging_station_id} not found.")
+        raise HTTPException(status_code=404, detail="ChargingStation instance not found.")
+
+    update_data = charging_station_data.dict(exclude={'connectors'})
+    for key, value in update_data.items():
+        setattr(db_charging_station, key, value)
     try:
-        db_charging_station = db.query(models.ChargingStation)\
-            .filter(models.ChargingStation.id == charging_station_id)\
-            .first()
-        if not db_charging_station:
-            logger.error(f"Charging station with ID: {charging_station_id} not found.")
-            raise HTTPException(status_code=404, detail="ChargingStation instance not found.")
-
-        update_data = charging_station_data.dict(exclude={'connectors'})
-        for key, value in update_data.items():
-            setattr(db_charging_station, key, value)
-
         existing_connectors = db_charging_station.connectors
         for connector in existing_connectors:
             db.delete(connector)
@@ -288,16 +286,15 @@ def update_charging_station(
 
 
 def delete_charging_station(db: Session, charging_station_id: UUID4):
+    db_charging_station = db.query(models.ChargingStation)\
+        .filter(models.ChargingStation.id == charging_station_id)\
+        .first()
+    if not db_charging_station:
+        logger.error(f"Charging station with ID: {charging_station_id} not found.")
+        raise HTTPException(status_code=404, detail="ChargingStation instance not found.")
     try:
-        db_charging_station = db.query(models.ChargingStation)\
-            .filter(models.ChargingStation.id == charging_station_id)\
-            .first()
-        if db_charging_station:
-            db.delete(db_charging_station)
-            db.commit()
-        else:
-            logger.error(f"Charging station with ID: {charging_station_id} not found.")
-            raise HTTPException(status_code=404, detail="ChargingStation instance not found.")
+        db.delete(db_charging_station)
+        db.commit()
     except Exception:
         logger.error("An error occurred while deleting a charging station.", exc_info=True)
         db.rollback()
@@ -381,15 +378,15 @@ def update_connector(
         check_connector_count_connector(db, connector_data.charging_station_id)
         logger.info("Connector count constraint not violated.")
 
+    db_connector = db.query(models.Connector)\
+        .filter(models.Connector.id == connector_id)\
+        .first()
+    if not db_connector:
+        logger.error(f"Connector with ID: {connector_id} not found.")
+        raise HTTPException(status_code=404, detail="Connector instance not found.")
+    for key, value in connector_data.dict().items():
+        setattr(db_connector, key, value)
     try:
-        db_connector = db.query(models.Connector)\
-            .filter(models.Connector.id == connector_id)\
-            .first()
-        if not db_connector:
-            logger.error(f"Connector with ID: {connector_id} not found.")
-            raise HTTPException(status_code=404, detail="Connector instance not found.")
-        for key, value in connector_data.dict().items():
-            setattr(db_connector, key, value)
         db.commit()
         db.refresh(db_connector)
         return db_connector
@@ -411,16 +408,15 @@ def update_connector(
 
 
 def delete_connector(db: Session, connector_id: UUID4):
+    db_connector = db.query(models.Connector)\
+        .filter(models.Connector.id == connector_id)\
+        .first()
+    if not db_connector:
+        logger.error(f"Connector with ID: {connector_id} not found.")
+        raise HTTPException(status_code=404, detail="Connector instance not found.")
     try:
-        db_connector = db.query(models.Connector)\
-            .filter(models.Connector.id == connector_id)\
-            .first()
-        if db_connector:
-            db.delete(db_connector)
-            db.commit()
-        else:
-            logger.error(f"Connector with ID: {connector_id} not found.")
-            raise HTTPException(status_code=404, detail="Connector instance not found.")
+        db.delete(db_connector)
+        db.commit()
     except Exception:
         logger.error("An error occurred while deleting a connector.", exc_info=True)
         db.rollback()
@@ -438,21 +434,29 @@ def create_user(db: Session, user_data: schemas.UserCreate):
 
     hashed_password = get_password_hash(user_data.password)
     new_user = models.User(username=user_data.username, hashed_password=hashed_password)
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    return new_user
+    try:
+        db.add(new_user)
+        db.commit()
+        db.refresh(new_user)
+        return new_user
+    except Exception:
+        logger.error("An error occurred while creating a new user.", exc_info=True)
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="An unexpected error occurred."
+        )
 
 
 def update_user(db: Session, username: str, user_data: schemas.UserCreate):
-    try:
-        db_user = db.query(models.User).filter(models.User.username == username).first()
-        if not db_user:
-            logger.error(f"User '{username}' not found.")
-            raise HTTPException(status_code=404, detail=f"User '{username}' not found.")
+    db_user = db.query(models.User).filter(models.User.username == username).first()
+    if not db_user:
+        logger.error(f"User '{username}' not found.")
+        raise HTTPException(status_code=404, detail=f"User '{username}' not found.")
 
-        db_user.username = user_data.username
-        db_user.hashed_password = get_password_hash(user_data.password)
+    db_user.username = user_data.username
+    db_user.hashed_password = get_password_hash(user_data.password)
+    try:
         db.commit()
         db.refresh(db_user)
         return db_user
@@ -474,14 +478,13 @@ def update_user(db: Session, username: str, user_data: schemas.UserCreate):
 
 
 def delete_user(db: Session, username: str):
+    db_user = db.query(models.User).filter(models.User.username == username).first()
+    if not db_user:
+        logger.error(f"User '{username}' not found.")
+        raise HTTPException(status_code=404, detail=f"User {username} not found.")
     try:
-        db_user = db.query(models.User).filter(models.User.username == username).first()
-        if db_user:
-            db.delete(db_user)
-            db.commit()
-        else:
-            logger.error(f"User '{username}' not found.")
-            raise HTTPException(status_code=404, detail=f"User {username} not found.")
+        db.delete(db_user)
+        db.commit()
     except Exception:
         logger.error("An error occurred while deleting a user.", exc_info=True)
         db.rollback()
