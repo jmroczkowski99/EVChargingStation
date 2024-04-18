@@ -8,7 +8,9 @@ from ..schemas import schemas
 from ..utils.helpers import (check_priority_constraint_connector,
                              check_priority_constraint_station,
                              check_connector_count_connector,
-                             check_connector_count_station)
+                             check_connector_count_station,
+                             check_connector_count_connector_update,
+                             check_priority_constraint_connector_update)
 from ..utils.auth import get_password_hash
 
 logger = logging.getLogger(__name__)
@@ -369,15 +371,6 @@ def update_connector(
         connector_id: UUID4,
         connector_data: schemas.ConnectorCreate,
 ):
-    if connector_data.dict().get('charging_station_id') is not None:
-        if connector_data.priority is True:
-            logger.info("Checking connector priority constraint...")
-            check_priority_constraint_connector(db, connector_data.charging_station_id)
-            logger.info("Connector priority constraint not violated.")
-        logger.info("Checking connector count constraint...")
-        check_connector_count_connector(db, connector_data.charging_station_id)
-        logger.info("Connector count constraint not violated.")
-
     db_connector = db.query(models.Connector)\
         .filter(models.Connector.id == connector_id)\
         .first()
@@ -387,9 +380,7 @@ def update_connector(
     for key, value in connector_data.dict().items():
         setattr(db_connector, key, value)
     try:
-        db.commit()
-        db.refresh(db_connector)
-        return db_connector
+        db.flush()
     except IntegrityError:
         logger.error("An integrity error occurred while updating a connector.", exc_info=True)
         db.rollback()
@@ -405,6 +396,14 @@ def update_connector(
             status_code=500,
             detail="An unexpected error occurred."
         )
+
+    if connector_data.dict().get('charging_station_id') is not None:
+        check_connector_count_connector_update(db, connector_data.charging_station_id)
+        check_priority_constraint_connector_update(db, connector_data.charging_station_id)
+
+    db.commit()
+    db.refresh(db_connector)
+    return db_connector
 
 
 def delete_connector(db: Session, connector_id: UUID4):
