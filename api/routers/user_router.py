@@ -29,7 +29,7 @@ def create_user(
 
 
 @router.put(
-    "/users/me",
+    "/users/{username}",
     response_model=schemas.User,
     status_code=200,
     tags=["Users"],
@@ -57,7 +57,7 @@ def update_user(
 
 
 @router.delete(
-    "/users/me",
+    "/users/{username}",
     status_code=204,
     tags=["Users"],
     summary="Delete your user credentials"
