@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  evchargingstation:
+    container_name: evchargingstation_container
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - SECRET_KEY=${SECRET_KEY}
+      - DATABASE_URL=${DATABASE_URL}
+      - TEST_DATABASE_URL=${TEST_DATABASE_URL}
+      - ALGORITHM=${ALGORITHM}
+    depends_on:
+      - db
+  db:
+    container_name: evchargingstation_db
+    image: postgres:12
+    environment:
+      - POSTGRES_USER=${PG_USER}
+      - POSTGRES_PASSWORD=${PG_PASSWORD}
+      - POSTGRES_DB=${PG_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+  test_db:
+    container_name: test_db
+    image: postgres:12
+    environment:
+      - POSTGRES_USER=${PG_TEST_USER}
+      - POSTGRES_PASSWORD=${PG_TEST_PASSWORD}
+      - POSTGRES_DB=${PG_TEST_DB}
+    ports:
+      - "5433:5432"
+    volumes:
+      - test_pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata: {}
+  test_pgdata: {}
