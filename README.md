@@ -153,7 +153,7 @@ Example valid input:
 
 ## Charging Station Types
 
-At the startup, the database is seeded with 5 charging station types. You can create, read, update and delete them if authorized.
+On startup, the database is seeded with 5 charging station types. You can create, read, update and delete them if authorized.
 
 ### Create, Update
 
@@ -223,7 +223,7 @@ To create or update a new charging station you have to specify:
 * A list of connectors with their unique names and their priority (True/False) - number of connectors cannot exceed the plug_count value provided in assigned charging station type and only one connector can have priority.
 * Charging Station ID (query parameter) - UUID, only for updating.
 
-The creation or update of a charging station also creates/updates connectors assigned to it, but you can also create and assign connectors on their own. This option is described in the next part of this README.
+The creation or update of a charging station also creates/updates connectors assigned to it, but you can also create and assign connectors on their own. This option is described in the "Connectors" section.
 
 Example valid input:
 ```json
