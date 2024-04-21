@@ -1,4 +1,4 @@
-from pydantic import BaseModel, UUID4, Field, conint, confloat, validator
+from pydantic import BaseModel, UUID4, Field, conint, confloat, field_validator, ConfigDict
 from typing import List, Optional
 from uuid import uuid4
 from ipaddress import IPv4Address, IPv6Address
@@ -25,11 +25,10 @@ class ChargingStationTypeNoList(ChargingStationTypeBase):
 
 
 class ChargingStationType(ChargingStationTypeBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID4
     charging_stations: List[ChargingStationIDOnly] = []
-
-    class Config:
-        orm_mode = True
 
 
 class ConnectorBase(BaseModel):
@@ -46,11 +45,10 @@ class ConnectorCreateWithStation(ConnectorBase):
 
 
 class Connector(ConnectorBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID4
     charging_station_id: Optional[UUID4] = None
-
-    class Config:
-        orm_mode = True
 
 
 class ChargingStationBase(BaseModel):
@@ -59,7 +57,7 @@ class ChargingStationBase(BaseModel):
     ip_address: str
     firmware_version: str
 
-    @validator("ip_address")
+    @field_validator("ip_address")
     def validate_ip_address(cls, v):
         try:
             IPv4Address(v)
@@ -77,12 +75,11 @@ class ChargingStationCreate(ChargingStationBase):
 
 
 class ChargingStation(ChargingStationBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: UUID4
     type: ChargingStationTypeNoList
     connectors: List[Connector] = []
-
-    class Config:
-        orm_mode = True
 
 
 class UserBase(BaseModel):
@@ -94,10 +91,7 @@ class UserCreate(UserBase):
 
 
 class User(UserBase):
-    pass
-
-    class Config:
-        orm_mode = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Token(BaseModel):
