@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 def create_charging_station_type(db: Session, charging_station_type_data: schemas.ChargingStationTypeCreate):
     try:
-        db_charging_station_type = models.ChargingStationType(**charging_station_type_data.dict())
+        db_charging_station_type = models.ChargingStationType(**charging_station_type_data.model_dump())
         db.add(db_charging_station_type)
         db.commit()
         db.refresh(db_charging_station_type)
@@ -84,7 +84,7 @@ def update_charging_station_type(
     if not db_charging_station_type:
         logger.error(f"Charging station type with ID: {charging_station_type_id} not found.")
         raise HTTPException(status_code=404, detail="ChargingStationType instance not found.")
-    for key, value in charging_station_type_data.dict().items():
+    for key, value in charging_station_type_data.model_dump().items():
         setattr(db_charging_station_type, key, value)
     try:
         db.commit()
@@ -143,13 +143,13 @@ def create_charging_station(db: Session, charging_station_data: schemas.Charging
     logger.info("Connector count constraint not violated.")
 
     try:
-        db_charging_station = models.ChargingStation(**charging_station_data.dict(exclude={'connectors'}))
+        db_charging_station = models.ChargingStation(**charging_station_data.model_dump(exclude={'connectors'}))
         db.add(db_charging_station)
         db.flush()
 
         connectors_data = charging_station_data.connectors
         for connector_data in connectors_data:
-            connector = models.Connector(**connector_data.dict())
+            connector = models.Connector(**connector_data.model_dump())
             db_charging_station.connectors.append(connector)
 
         db.commit()
@@ -253,7 +253,7 @@ def update_charging_station(
         logger.error(f"Charging station with ID: {charging_station_id} not found.")
         raise HTTPException(status_code=404, detail="ChargingStation instance not found.")
 
-    update_data = charging_station_data.dict(exclude={'connectors'})
+    update_data = charging_station_data.model_dump(exclude={'connectors'})
     for key, value in update_data.items():
         setattr(db_charging_station, key, value)
     try:
@@ -264,7 +264,7 @@ def update_charging_station(
 
         connectors_data = charging_station_data.connectors
         for connector_data in connectors_data:
-            connector = models.Connector(**connector_data.dict())
+            connector = models.Connector(**connector_data.model_dump())
             db_charging_station.connectors.append(connector)
 
         db.commit()
@@ -307,7 +307,7 @@ def delete_charging_station(db: Session, charging_station_id: UUID4):
 
 
 def create_connector(db: Session, connector_data: schemas.ConnectorCreate):
-    if connector_data.dict().get('charging_station_id') is not None:
+    if connector_data.model_dump().get('charging_station_id') is not None:
         if connector_data.priority is True:
             logger.info("Checking connector priority constraint...")
             check_priority_constraint_connector(db, connector_data.charging_station_id)
@@ -317,7 +317,7 @@ def create_connector(db: Session, connector_data: schemas.ConnectorCreate):
         logger.info("Connector count constraint not violated.")
 
     try:
-        db_connector = models.Connector(**connector_data.dict())
+        db_connector = models.Connector(**connector_data.model_dump())
         db.add(db_connector)
         db.commit()
         db.refresh(db_connector)
@@ -377,7 +377,7 @@ def update_connector(
     if not db_connector:
         logger.error(f"Connector with ID: {connector_id} not found.")
         raise HTTPException(status_code=404, detail="Connector instance not found.")
-    for key, value in connector_data.dict().items():
+    for key, value in connector_data.model_dump().items():
         setattr(db_connector, key, value)
     try:
         db.flush()
@@ -397,7 +397,7 @@ def update_connector(
             detail="An unexpected error occurred."
         )
 
-    if connector_data.dict().get('charging_station_id') is not None:
+    if connector_data.model_dump().get('charging_station_id') is not None:
         check_connector_count_connector_update(db, connector_data.charging_station_id)
         check_priority_constraint_connector_update(db, connector_data.charging_station_id)
 
